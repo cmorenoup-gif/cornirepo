@@ -10,7 +10,7 @@ def main_endpoint():
     if request.method == "POST":
         # Endpoint de prueba
         data = request.json
-        name = data.get("name", "Developer")
+        name = data.get("name", "Developer AMAZON")
         return {"message": f"Hello {name}!"}
 
     # GET → prueba real de Amazon US SP-API
