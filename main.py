@@ -29,7 +29,7 @@ def main_endpoint():
         sellers_client = Sellers(credentials=credentials, marketplace=Marketplaces.US)
         
         # 3. Llamamos al método correcto (plural)
-        response = sellers_client.get_marketplace_participations()
+        response = sellers_client.get_marketplace_participation()
         
         return jsonify({
             "status": "ok",
