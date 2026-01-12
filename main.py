@@ -6,6 +6,7 @@ from sp_api.base import Marketplaces
 app = Flask(__name__)
 
 def get_sp_api_credentials():
+    """Obtiene las credenciales de Amazon SP API desde variables de entorno."""
     return {
         "refresh_token": os.getenv('SP_API_REFRESH_TOKEN', '').strip(),
         "lwa_app_id": os.getenv('SP_API_CLIENT_ID', '').strip(),
@@ -19,25 +20,28 @@ def get_sp_api_credentials():
 def main_endpoint():
     creds = get_sp_api_credentials()
 
+    # POST → prueba simple
     if request.method == "POST":
         data = request.get_json(silent=True) or {}
-        return jsonify({"message": "Hello Cornilove!", "status": "online"})
+        name = data.get("name", "Developer AMAZON")
+        return jsonify({
+            "message": f"Hello {name}!",
+            "status": "online"
+        })
 
-    # GET → Prueba en modo SANDBOX (Sin el error de 'is_sandbox')
+    # GET → prueba Sandbox
     try:
-        # En Saleweaver, el Sandbox se activa pasando account='sandbox' 
-        # o usando credenciales de sandbox específicas.
         sellers_client = Sellers(
-            credentials=creds, 
+            **creds,
             marketplace=Marketplaces.US,
-            account='sandbox'  # <--- Esta es la forma correcta para esta librería
+            sandbox=True  # <-- activa Sandbox
         )
-        
+
         response = sellers_client.get_marketplace_participation()
-        
+
         return jsonify({
             "status": "success_sandbox",
-            "message": "Cornilove DB LLC - Conexión de prueba exitosa",
+            "message": "Conexión de prueba a Sandbox exitosa",
             "data": response.payload
         })
 
@@ -48,4 +52,6 @@ def main_endpoint():
         }), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    # Cloud Run define el puerto por la variable PORT
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
