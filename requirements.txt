@@ -1,2 +1,2 @@
-python-amazon-sp-api==1.4.6
+python-amazon-sp-api==1.9.60
 flask
