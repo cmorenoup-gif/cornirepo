@@ -15,8 +15,8 @@ def main_endpoint():
 
     # GET → prueba real de Amazon US SP-API
     try:
-        sellers = Sellers(marketplace=Marketplaces.US)
-        response = sellers.get_marketplace_participations()
+        sellers = Sellers()  # crea cliente SP‑API
+        response = sellers.get_marketplace_participation()  # método correcto
         return jsonify(response.payload)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
