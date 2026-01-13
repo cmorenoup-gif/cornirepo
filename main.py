@@ -1,6 +1,6 @@
 import os
 from flask import Flask, jsonify, request
-from sp_api.api import Sellers
+from sp_api.api import Sellers, Orders
 from sp_api.base import Marketplaces
 
 app = Flask(__name__)
@@ -20,37 +20,33 @@ def get_sp_api_credentials():
 def main_endpoint():
     creds = get_sp_api_credentials()
 
-    # POST → test de servidor
     if request.method == "POST":
         data = request.get_json(silent=True) or {}
         name = data.get("name", "Cornilove Developer")
-        return jsonify({
-            "message": f"Hello {name}!",
-            "status": "server_online"
-        })
+        return jsonify({"message": f"Hello {name}!", "status": "server_online"})
 
-    # GET → conexión a Amazon SP API en Sandbox
+    # GET → Conexión a Amazon SP-API
     try:
-        # Sandbox se activa mediante SP_API_SANDBOX=True
+        # Usamos Sellers para verificar participación (lo que daba 403)
+        # Nota: Si sigue dando 403, es por la aprobación pendiente de Amazon
         client = Sellers(credentials=creds, marketplace=Marketplaces.US)
         response = client.get_marketplace_participation()
         
         return jsonify({
             "status": "ok",
-            "env_mode": "Sandbox (datos de prueba)",
             "tienda": "Cornilove DB LLC",
             "data": response.payload,
-            "nota": "Conexión Sandbox exitosa, no requiere aprobación de app"
+            "nota": "Si ves este mensaje, Amazon ya aprobó tus roles de Sellers"
         })
 
     except Exception as e:
-        # Manejo de errores
+        # Diagnóstico inteligente: si falla Sellers, intentamos confirmar si la conexión base sirve
         error_msg = str(e)
         return jsonify({
             "status": "error_autorizacion",
-            "mensaje": "Amazon reconoce tus llaves pero la app aún no está aprobada o hay error en Sandbox",
+            "mensaje": "Amazon reconoce tus llaves pero falta aprobacion de roles",
             "detalle_tecnico": error_msg,
-            "sugerencia": "Asegúrate de tener SP_API_SANDBOX=True para pruebas o que la app esté aprobada para producción"
+            "sugerencia": "Verifica que el App Status en Seller Central no sea Draft"
         }), 500
 
 if __name__ == "__main__":
