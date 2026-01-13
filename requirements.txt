@@ -1,2 +1,6 @@
-python-amazon-sp-api==1.9.60
+# python-amazon-sp-api==1.9.60
 flask
+flask
+python-amazon-sp-api
+gunicorn
+requests
