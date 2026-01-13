@@ -1,12 +1,12 @@
 import os
 from flask import Flask, jsonify, request
-from sp_api.api import Sellers
+from sp_api.api import Orders
 from sp_api.base import Marketplaces, SellingApiException
 
 app = Flask(__name__)
 
 def get_sp_api_credentials():
-    """Extrae y limpia las credenciales de las variables de entorno de Cloud Run"""
+    """Extrae y limpia las credenciales de las variables de entorno"""
     return {
         "refresh_token": os.getenv('SP_API_REFRESH_TOKEN', '').strip(),
         "lwa_app_id": os.getenv('SP_API_CLIENT_ID', '').strip(),
@@ -25,36 +25,33 @@ def main_endpoint():
         name = data.get("name", "Cornilove Developer").strip()
         return jsonify({"message": f"Hello {name}!", "status": "server_online"})
 
-    # GET → Conexión a Amazon SP-API
+    # GET → Intentamos acceder a Orders API para validar Inventory and Order Tracking
     try:
-        client = Sellers(credentials=creds, marketplace=Marketplaces.US)
-        response = client.get_marketplace_participation()
+        client = Orders(credentials=creds, marketplace=Marketplaces.US)
+        response = client.get_orders(CreatedAfter="2026-01-01T00:00:00Z")  # Solo prueba, no importa fecha exacta
 
         return jsonify({
             "status": "ok",
-            "tienda": "Cornilove DB LLC",
-            "data": response.payload,
-            "nota": "Si ves este mensaje, Amazon ya aprobó tus roles de Sellers y la app está autorizada"
+            "mensaje": "Token autorizado para Inventory and Order Tracking",
+            "orders_count": len(response.payload.get("Orders", [])),
+            "nota": "Si ves esto, tu refresh token tiene acceso al rol requerido"
         })
 
     except SellingApiException as e:
-        # Manejo inteligente de errores de SP-API
         error_code = getattr(e, 'code', None)
         error_msg = getattr(e, 'message', str(e))
 
         if error_code in ["Unauthorized", "AccessDenied"]:
-            # Mensaje amigable si el token no tiene los roles correctos
             return jsonify({
                 "status": "error_autorizacion",
-                "mensaje": "El refresh token no tiene los roles necesarios o no se ha hecho self-authorization",
+                "mensaje": "El refresh token no tiene el rol 'Inventory and Order Tracking' autorizado",
                 "sugerencia": (
-                    "1. Revisa tu Developer Profile en Solution Provider Portal.\n"
-                    "2. Asegúrate de que los roles requeridos estén aprobados (Selling Partner Insights, Orders, etc.).\n"
-                    "3. Haz self-authorization de la app para tu cuenta Seller y usa el refresh token resultante."
+                    "1. Ve a Solution Provider Portal.\n"
+                    "2. Confirma que tu Developer Profile tiene el rol 'Inventory and Order Tracking'.\n"
+                    "3. Haz self-authorization para tu cuenta Seller y usa el refresh token resultante."
                 )
             }), 403
 
-        # Otros errores
         return jsonify({
             "status": "error_tecnico",
             "mensaje": "Ocurrió un error al conectar con SP-API",
@@ -62,7 +59,6 @@ def main_endpoint():
         }), 500
 
     except Exception as e:
-        # Captura cualquier otra excepción inesperada
         return jsonify({
             "status": "error_desconocido",
             "mensaje": "Error inesperado en el servidor",
