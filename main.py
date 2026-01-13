@@ -1,7 +1,7 @@
 import os
 from flask import Flask, jsonify, request
-from sp_api.api import Sellers, Orders
-from sp_api.base import Marketplaces
+from sp_api.api import Sellers
+from sp_api.base import Marketplaces, SellingApiException
 
 app = Flask(__name__)
 
@@ -22,33 +22,53 @@ def main_endpoint():
 
     if request.method == "POST":
         data = request.get_json(silent=True) or {}
-        name = data.get("name", "Cornilove Developer")
+        name = data.get("name", "Cornilove Developer").strip()
         return jsonify({"message": f"Hello {name}!", "status": "server_online"})
 
     # GET → Conexión a Amazon SP-API
     try:
-        # Usamos Sellers para verificar participación (lo que daba 403)
-        # Nota: Si sigue dando 403, es por la aprobación pendiente de Amazon
         client = Sellers(credentials=creds, marketplace=Marketplaces.US)
         response = client.get_marketplace_participation()
-        
+
         return jsonify({
             "status": "ok",
             "tienda": "Cornilove DB LLC",
             "data": response.payload,
-            "nota": "Si ves este mensaje, Amazon ya aprobó tus roles de Sellers"
+            "nota": "Si ves este mensaje, Amazon ya aprobó tus roles de Sellers y la app está autorizada"
         })
 
-    except Exception as e:
-        # Diagnóstico inteligente: si falla Sellers, intentamos confirmar si la conexión base sirve
-        error_msg = str(e)
+    except SellingApiException as e:
+        # Manejo inteligente de errores de SP-API
+        error_code = getattr(e, 'code', None)
+        error_msg = getattr(e, 'message', str(e))
+
+        if error_code in ["Unauthorized", "AccessDenied"]:
+            # Mensaje amigable si el token no tiene los roles correctos
+            return jsonify({
+                "status": "error_autorizacion",
+                "mensaje": "El refresh token no tiene los roles necesarios o no se ha hecho self-authorization",
+                "sugerencia": (
+                    "1. Revisa tu Developer Profile en Solution Provider Portal.\n"
+                    "2. Asegúrate de que los roles requeridos estén aprobados (Selling Partner Insights, Orders, etc.).\n"
+                    "3. Haz self-authorization de la app para tu cuenta Seller y usa el refresh token resultante."
+                )
+            }), 403
+
+        # Otros errores
         return jsonify({
-            "status": "error_autorizacion",
-            "mensaje": "Amazon reconoce tus llaves pero falta aprobacion de roles",
-            "detalle_tecnico": error_msg,
-            "sugerencia": "Verifica que el App Status en Seller Central no sea Draft"
+            "status": "error_tecnico",
+            "mensaje": "Ocurrió un error al conectar con SP-API",
+            "detalle_tecnico": error_msg
+        }), 500
+
+    except Exception as e:
+        # Captura cualquier otra excepción inesperada
+        return jsonify({
+            "status": "error_desconocido",
+            "mensaje": "Error inesperado en el servidor",
+            "detalle_tecnico": str(e)
         }), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=True)
