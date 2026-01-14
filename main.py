@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 # --- CONFIGURACIÓN OFICIAL PROYECTO AMAZON-CORNILOVE ---
 PROJECT_ID = "amazon-cornilove"
-DATASET_ID = "amz-cornilove"  # Actualizado al nombre oficial
+DATASET_ID = "amz_cornilove"  # Actualizado al nombre oficial
 TABLE_ID = "tbl_sales_all_orders" # Nombre modular para el histórico anual
 
 def get_sp_api_credentials():
