@@ -1,3 +1,4 @@
+# Este archivo gestiona tus llaves secretas y la conexión a la SP-API.
 from google.cloud import bigquery
 import logging
 
