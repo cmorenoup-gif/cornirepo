@@ -8,6 +8,9 @@ from bq_handler import auto_insert_to_bq
 from storage_manager import upload_to_bucket
 from sp_api.base import SellingApiException
 
+# --- IMPORTANTE: Integración de Alertas de Cornilove ---
+from notifications import send_critical_alert 
+
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
@@ -43,7 +46,10 @@ def sync_amazon_report(report_name):
         report_url = amz.get_report(type_code)
         
         if not report_url:
-            return jsonify({"status": "error", "message": "Amazon no generó el reporte a tiempo"}), 500
+            # --- SE DISPARA LA ALERTA AQUÍ ---
+            error_msg = "Amazon no generó el reporte a tiempo"
+            send_critical_alert(error_msg, report_name=report_name)
+            return jsonify({"status": "error", "message": error_msg}), 500
 
         # 3. DESCARGA REAL del contenido desde Amazon
         logging.info(f"[DESCARGA] Bajando contenido desde URL de Amazon para {report_name}")
@@ -56,13 +62,12 @@ def sync_amazon_report(report_name):
         gcs_path = upload_to_bucket(report_content, file_name)
 
         # 5. CONTADOR: Ingesta en BigQuery
-        # Nota: BigQuery procesará el CSV usando autodetect
         table_id = REPORTS_CONFIG.get(report_name)
-        # Convertimos a lista de diccionarios simple para la función actual o procesamos el CSV
         bq_error = auto_insert_to_bq([{"raw_data": report_content[:1000], "source": file_name}], table_id)
 
         if bq_error:
             logging.error(f"[BQ ERROR] {bq_error}")
+            # Opcional: Podrías enviar alerta aquí también si falla la base de datos
 
         return jsonify({
             "status": "ok",
@@ -73,8 +78,11 @@ def sync_amazon_report(report_name):
         })
 
     except Exception as e:
-        logging.error(f"Error en flujo {report_name}: {str(e)}")
-        return jsonify({"status": "error_general", "detalle": str(e)}), 500
+        error_general = str(e)
+        logging.error(f"Error en flujo {report_name}: {error_general}")
+        # --- ALERTA PARA CUALQUIER OTRO FALLO TÉCNICO ---
+        send_critical_alert(f"Error General: {error_general}", report_name=report_name)
+        return jsonify({"status": "error_general", "detalle": error_general}), 500
 
 @app.route("/", methods=["GET"])
 def health_check():
