@@ -1,5 +1,4 @@
 import os
-import json
 from flask import Flask, jsonify
 from sp_api.api import Orders
 from sp_api.base import Marketplaces, SellingApiException
@@ -7,6 +6,7 @@ from google.cloud import bigquery
 
 app = Flask(__name__)
 
+# Configuración de CORNILOVE DB LLC
 PROJECT_ID = "amazon-cornilove"
 DATASET_ID = "amazon_prueba"
 TABLE_ID = "orders_dinamica"
@@ -26,37 +26,34 @@ def auto_insert_to_bq(data):
     table_ref = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}"
     
     job_config = bigquery.LoadJobConfig(
-        autodetect=True, # Crea la tabla y columnas automáticamente
+        autodetect=True,
         write_disposition="WRITE_APPEND",
     )
 
     if data:
-        # Forzamos formato JSON serializable para BigQuery
         load_job = client.load_table_from_json(data, table_ref, job_config=job_config)
         load_job.result()
         return None
-    return "No data"
+    return "No hay datos para procesar"
 
 @app.route("/", methods=["GET"])
 def main_endpoint():
     creds = get_sp_api_credentials()
     try:
         client = Orders(credentials=creds, marketplace=Marketplaces.US)
+        # Consultamos órdenes del 2026
         response = client.get_orders(CreatedAfter="2026-01-01T00:00:00Z")
         orders = response.payload.get("Orders", [])
 
-        # --- SIMULACIÓN PARA CORNILOVE DB LLC ---
+        # --- ORDEN DE PRUEBA SI NO HAY REALES ---
         if not orders:
-            print("No hay órdenes reales. Insertando orden de prueba para crear la tabla...")
             orders = [{
                 "AmazonOrderId": "TEST-CORNILOVE-001",
                 "OrderStatus": "Simulation_Active",
                 "PurchaseDate": "2026-01-14T00:00:00Z",
                 "OrderTotal": {"Amount": "25.00", "CurrencyCode": "USD"},
-                "SalesChannel": "Cornilove_Internal_Test",
-                "IsBusinessOrder": "true"
+                "SalesChannel": "Cornilove_Internal_Test"
             }]
-        # ----------------------------------------
 
         errors = auto_insert_to_bq(orders)
         
@@ -65,8 +62,8 @@ def main_endpoint():
 
         return jsonify({
             "status": "ok", 
-            "mensaje": "¡Éxito! Tabla creada y datos de prueba insertados en amazon_prueba.",
-            "data_source": "Simulation_CORNILOVE" if orders[0]["AmazonOrderId"].startswith("TEST") else "Amazon_Real"
+            "mensaje": f"Tabla {TABLE_ID} lista en el dataset {DATASET_ID}.",
+            "tipo_orden": "Prueba" if "TEST" in orders[0]["AmazonOrderId"] else "Real"
         })
 
     except SellingApiException as e:
