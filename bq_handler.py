@@ -1,4 +1,4 @@
-# Este archivo gestiona tus llaves secretas y la conexión a la SP-API.
+# Este archivo se encarga de que las tablas se creen solas en BigQuery.
 from google.cloud import bigquery
 import logging
 
