@@ -1,6 +1,15 @@
-# python-amazon-sp-api==1.9.60
+# --- Operación y Servidor ---
 flask
-google-cloud-bigquery
-python-amazon-sp-api
 gunicorn
 requests
+
+# --- Conexión con Amazon SP-API ---
+python-amazon-sp-api
+
+# --- Infraestructura Google Cloud (Iowa) ---
+google-cloud-bigquery
+google-cloud-storage
+google-cloud-logging
+
+# --- Procesamiento de Datos ---
+pandas
