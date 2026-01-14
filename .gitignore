@@ -21,3 +21,8 @@ env/
 # --- Archivos de Sistema ---
 .DS_Store
 Thumbs.db
+
+# Bloquear cualquier intento de subir archivos de entorno locales
+.env
+auth_info.json
+*.credentials
