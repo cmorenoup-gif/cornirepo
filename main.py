@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 # Configuración de CORNILOVE DB LLC
 PROJECT_ID = "amazon-cornilove"
-DATASET_ID = "amazon_prueba"
+DATASET_ID = "amaz-cornilove"
 TABLE_ID = "orders_dinamica"
 
 def get_sp_api_credentials():
