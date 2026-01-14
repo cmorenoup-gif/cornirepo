@@ -1,43 +1,23 @@
-import os
-import logging
-from flask import Flask, jsonify
-from amazon_client import AmazonClient
+from storage_manager import upload_to_bucket
 from bq_handler import auto_insert_to_bq
-from sp_api.base import SellingApiException
+from amazon_client import AmazonClient
 
-app = Flask(__name__)
-logging.basicConfig(level=logging.INFO)
-
-TABLE_ID = "tbl_sales_all_orders"
-
-@app.route("/", methods=["GET"])
-def main_endpoint():
-    try:
-        # 1. Usar el Mensajero
-        amz = AmazonClient()
-        orders = amz.fetch_orders()
-
-        # 2. Lógica de Prueba (Sustancia de Negocio)
-        if not orders:
-            orders = [{
-                "AmazonOrderId": "TEST-CORNILOVE-001",
-                "OrderStatus": "Simulation_Active",
-                "Brand": "Cornilove DB LLC"
-            }]
-
-        # 3. Usar el Contador
-        errors = auto_insert_to_bq(orders, TABLE_ID)
+@app.route("/reporte-inventario", methods=["GET"])
+def sync_inventory():
+    amz = AmazonClient()
+    # 1. Pedir a Amazon el Inventory Ledger
+    report_url = amz.get_report("GET_LEDGER_SUMMARY_VIEW_DATA")
+    
+    if report_url:
+        # En la vida real, aquí descargarías el contenido del URL.
+        # Por ahora, simulamos el flujo de éxito:
+        data = [{"sku": "TAZA-NEGRA-01", "stock": 100, "velocidad": "alta"}]
         
-        if errors:
-            return jsonify({"status": "error_bq", "detalle": errors}), 500
-
-        logging.info(f"[SUCCESS] {TABLE_ID} actualizado.")
-        return jsonify({"status": "ok", "tipo": "Prueba" if "TEST" in orders[0]["AmazonOrderId"] else "Real"})
-
-    except SellingApiException as e:
-        return jsonify({"status": "error_amazon", "detalle": str(e)}), 403
-    except Exception as e:
-        return jsonify({"status": "error_general", "detalle": str(e)}), 500
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+        # 2. Respaldar en Bucket de Iowa
+        upload_to_bucket(data, "inventario_mayo.json")
+        
+        # 3. Meter a BigQuery
+        auto_insert_to_bq(data, "tbl_inventory_ledger")
+        
+        return jsonify({"status": "ok", "mensaje": "Inventario actualizado"})
+    return jsonify({"status": "error", "mensaje": "Amazon no generó el reporte"}), 500
