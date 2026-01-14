@@ -1,0 +1,30 @@
+steps:
+  # 1. Construir la imagen del contenedor
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/cornilove-app-amz', '.']
+
+  # 2. Subir la imagen al registro
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/cornilove-app-amz']
+
+  # 3. Desplegar en Cloud Run vinculando los Secretos
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'cornilove-app-amz'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/cornilove-app-amz'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--memory'
+      - '1Gi'
+      # Vinculación de tus variables de entorno con Secret Manager
+      - '--set-secrets'
+      - 'SP_API_REFRESH_TOKEN=SP_API_REFRESH_TOKEN:latest,SP_API_CLIENT_ID=SP_API_CLIENT_ID:latest,SP_API_CLIENT_SECRET=SP_API_CLIENT_SECRET:latest,SP_API_ACCESS_KEY=SP_API_ACCESS_KEY:latest,SP_API_SECRET_KEY=SP_API_SECRET_KEY:latest,SP_API_ROLE_ARN=SP_API_ROLE_ARN:latest'
+
+images:
+  - 'gcr.io/$PROJECT_ID/cornilove-app-amz'
