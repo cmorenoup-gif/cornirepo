@@ -1,0 +1,23 @@
+# --- Seguridad y Credenciales (CRÍTICO) ---
+# Nunca subas tus llaves JSON de Google Cloud
+*.json
+# Archivos de variables de entorno
+.env
+auth_codes/
+
+# --- Python basura técnica ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+venv/
+env/
+
+# --- Google Cloud y Docker locales ---
+.gcloud/
+.docker/
+*.log
+
+# --- Archivos de Sistema ---
+.DS_Store
+Thumbs.db
